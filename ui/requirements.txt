@@ -1,0 +1,16 @@
+Flask
+Jinja2
+MarkupSafe
+Werkzeug
+itsdangerous
+click
+opencv-python
+numpy
+scipy
+imutils
+dlib
+openai
+python-dotenv
+Pillow
+torch
+transformers

@@ -1,0 +1,50 @@
+# Python virtual environments
+.venv/
+venv/
+venv311/
+env/
+
+# Python cache and build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Environment variables and secrets
+.env
+.env.*
+*.key
+*.secret
+
+# Runtime output
+ui/captures/
+ui/runtime_data/
+captures/
+runtime_data/
+capture_error.html
+
+# Local datasets and models
+data/
+IMDB preprocessed data/
+Audio file programming/
+Visual data analysis/
+audio recordings/
+Models/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.bak
+*.tmp
+*.log
+~$*
+
+
+
+
+
