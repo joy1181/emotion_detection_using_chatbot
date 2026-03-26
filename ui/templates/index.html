@@ -732,6 +732,7 @@
         let isStreamingActive = false;
         let knownMessageKeys = new Set();
         let typingIndicator = null;
+        let lastPipelineError = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
             addSystemMessage('Chat is ready. Start the camera for live emotion context, or begin typing to talk.');
@@ -749,10 +750,15 @@
             try {
                 const response = await fetch('/system_status');
                 const data = await response.json();
-                setStatus('emotionStatus', data.emotion_model);
+                setStatus('emotionStatus', data.face_pipeline_ready);
                 setStatus('cameraStatus', data.camera);
                 setStatus('chatStatus', data.deepseek_ready);
                 setStatus('historyStatus', data.emotion_history_count > 0 || data.conversation_turns >= 0);
+
+                if (!data.face_pipeline_ready && data.face_pipeline_last_error && data.face_pipeline_last_error !== lastPipelineError) {
+                    lastPipelineError = data.face_pipeline_last_error;
+                    addSystemMessage('Face pipeline unavailable: ' + data.face_pipeline_last_error);
+                }
             } catch (error) {
                 console.error('Error checking system status:', error);
             }
@@ -779,6 +785,10 @@
                 captureFrameBtn.disabled = false;
                 isStreamingActive = true;
                 refreshEmotionPanel();
+
+                if (data.warning) {
+                    addSystemMessage('Camera started, but face analysis is unavailable: ' + data.warning);
+                }
 
                 if (emotionUpdateInterval) {
                     clearInterval(emotionUpdateInterval);
@@ -822,7 +832,8 @@
                     return;
                 }
                 await refreshEmotionPanel();
-                alert('Snapshot saved.\n\nImage: ' + data.image_file + '\nData: ' + data.data_file);
+                const warning = data.warning ? '\n\nWarning: ' + data.warning : '';
+                alert('Snapshot saved.\n\nImage: ' + data.image_file + '\nData: ' + data.data_file + warning);
             } catch (error) {
                 console.error('Error capturing frame:', error);
                 alert('Unable to capture the current frame.');
@@ -833,15 +844,22 @@
             try {
                 const response = await fetch('/get_emotions');
                 const data = await response.json();
-                updatePrimaryEmotion(data.primary_emotion || null);
+                updatePrimaryEmotion(data.primary_emotion || null, data);
                 renderEmotionTimeline(data.emotion_history || []);
-                renderEmotionFaces(data.faces || []);
+                renderEmotionFaces(data.faces || [], data);
             } catch (error) {
                 console.error('Error refreshing emotion panel:', error);
             }
         }
 
-        function updatePrimaryEmotion(primary) {
+        function updatePrimaryEmotion(primary, diagnostics = {}) {
+            if (diagnostics.face_pipeline_ready === false && diagnostics.face_pipeline_last_error) {
+                primaryEmotion.textContent = 'Unavailable';
+                primaryConfidence.textContent = 'Confidence: --';
+                primaryMeta.textContent = diagnostics.face_pipeline_last_error;
+                return;
+            }
+
             if (!primary) {
                 primaryEmotion.textContent = 'Neutral';
                 primaryConfidence.textContent = 'Confidence: 0.0%';
@@ -884,7 +902,12 @@
             }).join('');
         }
 
-        function renderEmotionFaces(faces) {
+        function renderEmotionFaces(faces, diagnostics = {}) {
+            if (diagnostics.face_pipeline_ready === false && diagnostics.face_pipeline_last_error) {
+                emotionContent.innerHTML = '<div class="empty-state">' + escapeHtml(diagnostics.face_pipeline_last_error) + '</div>';
+                return;
+            }
+
             if (!faces.length) {
                 emotionContent.innerHTML = '<div class="empty-state">No analyzed face data available yet.</div>';
                 return;

@@ -41,6 +41,8 @@ camera = None
 active_camera_backend = None
 is_streaming = False
 current_emotions = {"timestamp": None, "faces_count": 0, "faces": []}
+face_pipeline_ready = False
+face_pipeline_last_error = "Face pipeline has not been validated yet."
 
 conversation_history = []
 emotion_history = []
@@ -67,6 +69,46 @@ MAX_RESPONSE_TOKENS = 512
 NEGATIVE_TRIGGER_SECONDS = 5
 PROACTIVE_COOLDOWN_SECONDS = 120
 MAX_EMOTION_HISTORY = 200
+
+
+def set_face_pipeline_status(ready, error=None):
+    global face_pipeline_ready, face_pipeline_last_error
+    face_pipeline_ready = ready
+    face_pipeline_last_error = error
+
+
+def reset_current_emotions(timestamp=None):
+    global current_emotions
+    with state_lock:
+        current_emotions = {
+            "timestamp": timestamp or now_iso(),
+            "faces_count": 0,
+            "faces": [],
+        }
+
+
+def validate_face_pipeline():
+    if face_detector is None or predictor is None:
+        set_face_pipeline_status(False, "Face detector or landmark predictor is unavailable.")
+        return False
+    if emotion_model is None:
+        set_face_pipeline_status(False, "Emotion classification model is unavailable.")
+        return False
+
+    gray_probe = np.zeros((32, 32), dtype=np.uint8)
+    rgb_probe = np.zeros((32, 32, 3), dtype=np.uint8)
+    probe_rect = dlib.rectangle(0, 0, 31, 31)
+
+    try:
+        face_detector(gray_probe, 0)
+        face_detector(rgb_probe, 0)
+        predictor(gray_probe, probe_rect)
+    except Exception as exc:
+        set_face_pipeline_status(False, f"Face pipeline self-check failed: {exc}")
+        return False
+
+    set_face_pipeline_status(True, None)
+    return True
 
 
 def ensure_runtime_dirs():
@@ -410,28 +452,40 @@ def predict_emotion_probabilities(face_region):
     raise RuntimeError(f"Unsupported emotion model type: {emotion_model_type}")
 
 
+"""
+将原始BGR图像转换为灰度图和RGB图,并确保它们是连续的uint8数组,
+# 以兼容dlib和Hugging Face模型的输入要求。
+# 检测人脸并提取面部区域进行情绪预测,同时计算EAR以评估眨眼程度。
+# 将每个检测到的人脸的情绪数据存储在全局状态中，并在视频帧上绘制边界框和情绪标签。
+真实摄像头帧的数据：
+原始 frame 形状是 (480, 640, 3)
+dtype 是 uint8
+gray 是 uint8 且连续
+rgb_frame 是 uint8 且连续
+"""
 def process_frame(frame):
     global current_emotions
 
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    if gray.dtype != np.uint8:
-        gray = cv2.convertScaleAbs(gray)
-    gray = np.ascontiguousarray(gray, dtype=np.uint8)
+    if not face_pipeline_ready:
+        reset_current_emotions()
+        return frame
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) #转换为灰度图
+    if gray.dtype != np.uint8:  #确保是uint8类型
+        gray = cv2.convertScaleAbs(gray) 
+    gray = np.ascontiguousarray(gray, dtype=np.uint8) #优化内存访问
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     if rgb_frame.dtype != np.uint8:
         rgb_frame = cv2.convertScaleAbs(rgb_frame)
     rgb_frame = np.ascontiguousarray(rgb_frame, dtype=np.uint8)
 
     try:
-        faces = face_detector(rgb_frame, 1)
+        faces = face_detector(rgb_frame, 1)  #出错点
     except Exception as exc:
-        print(f"Face detection failed for current frame: {exc}")
-        with state_lock:
-            current_emotions = {
-                "timestamp": now_iso(),
-                "faces_count": 0,
-                "faces": [],
-            }
+        message = f"Face detection failed for current frame: {exc}"
+        print(message)
+        set_face_pipeline_status(False, message)
+        reset_current_emotions()
         return frame
 
     emotions_data = []
@@ -476,6 +530,7 @@ def process_frame(frame):
             )
         except Exception as exc:
             print(f"Error processing face {index}: {exc}")
+            set_face_pipeline_status(False, f"Face processing failed for face {index}: {exc}")
 
     snapshot = {
         "timestamp": now_iso(),
@@ -490,7 +545,7 @@ def process_frame(frame):
 
 
 def generate_frames():
-    global camera, is_streaming
+    global camera, is_streaming 
     while is_streaming:
         if camera is None:
             break
@@ -579,13 +634,15 @@ def start_camera():
                 }
             ), 500
     is_streaming = True
-    return jsonify(
-        {
-            "status": "Camera started",
-            "camera_index": CAMERA_INDEX,
-            "camera_backend": active_camera_backend,
-        }
-    )
+    payload = {
+        "status": "Camera started",
+        "camera_index": CAMERA_INDEX,
+        "camera_backend": active_camera_backend,
+        "face_pipeline_ready": face_pipeline_ready,
+    }
+    if not face_pipeline_ready and face_pipeline_last_error:
+        payload["warning"] = face_pipeline_last_error
+    return jsonify(payload)
 
 
 @app.route("/stop_camera")
@@ -604,6 +661,8 @@ def get_emotions():
             **current_emotions,
             "primary_emotion": primary,
             "emotion_history": emotion_history[-20:],
+            "face_pipeline_ready": face_pipeline_ready,
+            "face_pipeline_last_error": face_pipeline_last_error,
         }
     return jsonify(payload)
 
@@ -615,6 +674,8 @@ def system_status():
         "predictor": predictor is not None,
         "emotion_model": emotion_model is not None,
         "emotion_model_type": emotion_model_type,
+        "face_pipeline_ready": face_pipeline_ready,
+        "face_pipeline_last_error": face_pipeline_last_error,
         "camera": camera is not None and camera.isOpened() if camera else False,
         "camera_index": CAMERA_INDEX,
         "camera_backend": active_camera_backend,
@@ -651,14 +712,16 @@ def capture_frame():
     with open(data_filename, "w", encoding="utf-8") as handle:
         json.dump(current_emotions, handle, ensure_ascii=False, indent=2)
 
-    return jsonify(
-        {
-            "status": "Frame captured",
-            "image_file": image_filename,
-            "data_file": data_filename,
-            "emotions": current_emotions,
-        }
-    )
+    payload = {
+        "status": "Frame captured",
+        "image_file": image_filename,
+        "data_file": data_filename,
+        "emotions": current_emotions,
+        "face_pipeline_ready": face_pipeline_ready,
+    }
+    if not face_pipeline_ready and face_pipeline_last_error:
+        payload["warning"] = face_pipeline_last_error
+    return jsonify(payload)
 
 
 @app.route("/ask_chatbot", methods=["POST"])
@@ -724,8 +787,12 @@ def initialize_system():
 
     if not setup_face_detection():
         print("Failed to setup face detection.")
+        set_face_pipeline_status(False, "Face detector setup failed.")
     if not load_emotion_model():
         print("Failed to load emotion model.")
+        set_face_pipeline_status(False, "Emotion model load failed.")
+    if not validate_face_pipeline() and face_pipeline_last_error:
+        print(face_pipeline_last_error)
     if not deepseek_available():
         print("DeepSeek API key not found. Chatbot will return friendly error messages until configured.")
 
