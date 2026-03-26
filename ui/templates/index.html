@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emotion-Aware Support Chat</title>
+    <title>情绪感知陪伴对话</title>
     <style>
         :root {
             --bg-top: #0f172a;
@@ -405,7 +405,8 @@
         .chat-panel {
             display: flex;
             flex-direction: column;
-            min-height: 760px;
+            height: min(760px, calc(100vh - 120px));
+            min-height: 620px;
             overflow: hidden;
         }
 
@@ -436,7 +437,7 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-            min-height: 420px;
+            min-height: 0;
         }
 
         .message {
@@ -447,6 +448,26 @@
             font-size: 0.95rem;
             white-space: pre-wrap;
             word-break: break-word;
+        }
+
+        .chat-time-divider {
+            align-self: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            color: #6b7280;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(16, 33, 58, 0.08);
+        }
+
+        .message-time {
+            margin-top: 6px;
+            font-size: 0.74rem;
+            color: rgba(16, 33, 58, 0.56);
+        }
+
+        .message.user .message-time {
+            color: rgba(255, 255, 255, 0.82);
         }
 
         .message.user {
@@ -548,7 +569,8 @@
             }
 
             .chat-panel {
-                min-height: 640px;
+                height: 680px;
+                min-height: 0;
             }
         }
 
@@ -588,6 +610,11 @@
             .chat-form button {
                 width: 100%;
             }
+
+            .chat-panel {
+                height: 72vh;
+                min-height: 520px;
+            }
         }
     </style>
 </head>
@@ -595,15 +622,15 @@
 <body>
     <div class="shell">
         <header class="hero">
-            <h1>Emotion-Aware Support Chat</h1>
+            <h1>情绪感知陪伴对话</h1>
             <p>
-                This interface keeps the real-time facial emotion detection pipeline, tracks meaningful emotion changes,
-                and sends the latest emotion context into DeepSeek to support a more natural conversation.
+                该页面集成了实时人脸情绪识别能力，可持续跟踪关键情绪变化，
+                并将最新情绪上下文发送给 DeepSeek，让对话更加自然、贴近状态。
             </p>
             <div class="hero-strip">
-                <div class="hero-pill">Real-time facial emotion recognition</div>
-                <div class="hero-pill">DeepSeek multi-turn conversation</div>
-                <div class="hero-pill">Proactive support after 5s of sustained negative emotion</div>
+                <div class="hero-pill">实时人脸情绪识别</div>
+                <div class="hero-pill">DeepSeek 多轮对话</div>
+                <div class="hero-pill">持续 5 秒负面情绪后主动关怀</div>
             </div>
         </header>
 
@@ -611,43 +638,43 @@
             <section class="panel video-panel">
                 <div class="panel-header">
                     <div class="panel-title">
-                        <h2>Video Emotion Monitoring</h2>
-                        <p>Start the camera to detect the current facial emotion, confidence, and meaningful transitions.</p>
+                        <h2>视频情绪监测</h2>
+                        <p>启动摄像头后，可实时识别当前情绪、置信度以及关键情绪变化。</p>
                     </div>
                 </div>
 
                 <div class="video-stage">
-                    <img id="videoFeed" alt="Live emotion video feed">
+                    <img id="videoFeed" alt="实时情绪视频流">
                     <div id="videoPlaceholder" class="video-placeholder">
-                        <strong>Camera not active</strong>
-                        <span>Once the camera starts, the page will stream the live feed, highlight the detected face, and update the current emotional state continuously.</span>
+                        <strong>摄像头未启动</strong>
+                        <span>启动后页面会显示实时画面，标记检测到的人脸，并持续更新当前情绪状态。</span>
                     </div>
                 </div>
 
                 <div class="control-row">
-                    <button class="btn btn-primary" id="startCamera">Start Camera</button>
-                    <button class="btn btn-secondary" id="stopCamera" disabled>Stop Camera</button>
-                    <button class="btn btn-ghost" id="captureFrame" disabled>Capture Snapshot</button>
+                    <button class="btn btn-primary" id="startCamera">启动摄像头</button>
+                    <button class="btn btn-secondary" id="stopCamera" disabled>停止摄像头</button>
+                    <button class="btn btn-ghost" id="captureFrame" disabled>保存快照</button>
                 </div>
 
                 <div class="insight-grid">
                     <div class="insight-card">
-                        <h3>Current Emotion</h3>
-                        <div id="primaryEmotion" class="emotion-hero">Neutral</div>
-                        <div id="primaryConfidence" class="confidence">Confidence: 0.0%</div>
-                        <div id="primaryMeta" class="confidence">No face detected yet.</div>
+                        <h3>当前情绪</h3>
+                        <div id="primaryEmotion" class="emotion-hero">平静</div>
+                        <div id="primaryConfidence" class="confidence">置信度：0.0%</div>
+                        <div id="primaryMeta" class="confidence">暂未检测到人脸。</div>
                     </div>
                     <div class="insight-card">
-                        <h3>Emotion Timeline</h3>
+                        <h3>情绪时间线</h3>
                         <div id="emotionTimeline" class="timeline">
-                            <div class="empty-state">Meaningful emotion changes will appear here.</div>
+                            <div class="empty-state">关键情绪变化将显示在这里。</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="emotion-detail">
-                    <h3>Detected Face Details</h3>
-                    <div id="emotionContent" class="empty-state">No analyzed face data available yet.</div>
+                    <h3>人脸识别详情</h3>
+                    <div id="emotionContent" class="empty-state">暂无人脸分析数据。</div>
                 </div>
 
                 <div class="status-panel">
@@ -655,29 +682,29 @@
                         <div class="status-item">
                             <div class="status-dot" id="emotionStatus"></div>
                             <div class="status-copy">
-                                <strong>Emotion Model</strong>
-                                <span>Local facial model readiness</span>
+                                <strong>情绪模型</strong>
+                                <span>本地情绪模型状态</span>
                             </div>
                         </div>
                         <div class="status-item">
                             <div class="status-dot" id="cameraStatus"></div>
                             <div class="status-copy">
-                                <strong>Camera</strong>
-                                <span>Stream and hardware state</span>
+                                <strong>摄像头</strong>
+                                <span>视频流与硬件状态</span>
                             </div>
                         </div>
                         <div class="status-item">
                             <div class="status-dot" id="chatStatus"></div>
                             <div class="status-copy">
-                                <strong>DeepSeek Chat</strong>
-                                <span>Remote conversation service</span>
+                                <strong>DeepSeek 对话</strong>
+                                <span>远程对话服务状态</span>
                             </div>
                         </div>
                         <div class="status-item">
                             <div class="status-dot" id="historyStatus"></div>
                             <div class="status-copy">
-                                <strong>History Tracking</strong>
-                                <span>Emotion and dialogue storage</span>
+                                <strong>历史记录</strong>
+                                <span>情绪与对话数据存储</span>
                             </div>
                         </div>
                     </div>
@@ -687,25 +714,25 @@
             <section class="panel chat-panel">
                 <div class="panel-header">
                     <div class="panel-title">
-                        <h2>DeepSeek Conversation</h2>
-                        <p>The chat uses the current facial emotion and recent emotion transitions as context for each reply.</p>
+                        <h2>DeepSeek 智能对话</h2>
+                        <p>每次回复都会结合当前人脸情绪以及最近的情绪变化作为上下文。</p>
                     </div>
                 </div>
 
                 <div class="chat-toolbar">
-                    <button class="btn btn-ghost" id="resetChat">Reset Conversation</button>
+                    <button class="btn btn-ghost" id="resetChat">重置对话</button>
                 </div>
 
                 <div class="mini-note" id="chatHint">
-                    You can chat manually at any time. If the system observes a negative emotion for 5 continuous seconds,
-                    it can also send a proactive supportive message automatically.
+                    你可以随时手动发起对话。如果系统检测到连续 5 秒的负面情绪，
+                    也会自动发送关怀提示。
                 </div>
 
                 <div class="chat-messages" id="chatMessages"></div>
 
                 <form class="chat-form" id="chatForm">
-                    <input type="text" id="chatInput" placeholder="Type a message to start talking..." autocomplete="off">
-                    <button type="submit" class="btn btn-primary" id="chatSend">Send</button>
+                    <input type="text" id="chatInput" placeholder="输入消息后开始对话..." autocomplete="off">
+                    <button type="submit" class="btn btn-primary" id="chatSend">发送</button>
                 </form>
             </section>
         </main>
@@ -733,9 +760,19 @@
         let knownMessageKeys = new Set();
         let typingIndicator = null;
         let lastPipelineError = null;
+        let lastTimeDividerTime = null;
+        const emotionLabelMap = {
+            angry: '愤怒',
+            disgust: '厌恶',
+            fear: '恐惧',
+            happy: '开心',
+            sad: '悲伤',
+            surprise: '惊讶',
+            neutral: '平静',
+        };
 
         document.addEventListener('DOMContentLoaded', async () => {
-            addSystemMessage('Chat is ready. Start the camera for live emotion context, or begin typing to talk.');
+            addSystemMessage('聊天已就绪。你可以先启动摄像头获取实时情绪上下文，或直接输入消息开始对话。');
             await Promise.all([
                 checkSystemStatus(),
                 loadConversationHistory(),
@@ -757,10 +794,10 @@
 
                 if (!data.face_pipeline_ready && data.face_pipeline_last_error && data.face_pipeline_last_error !== lastPipelineError) {
                     lastPipelineError = data.face_pipeline_last_error;
-                    addSystemMessage('Face pipeline unavailable: ' + data.face_pipeline_last_error);
+                    addSystemMessage('人脸识别管线不可用：' + data.face_pipeline_last_error);
                 }
             } catch (error) {
-                console.error('Error checking system status:', error);
+                console.error('检查系统状态失败：', error);
             }
         }
 
@@ -787,7 +824,7 @@
                 refreshEmotionPanel();
 
                 if (data.warning) {
-                    addSystemMessage('Camera started, but face analysis is unavailable: ' + data.warning);
+                    addSystemMessage('摄像头已启动，但人脸分析暂不可用：' + data.warning);
                 }
 
                 if (emotionUpdateInterval) {
@@ -795,8 +832,8 @@
                 }
                 emotionUpdateInterval = setInterval(refreshEmotionPanel, 1000);
             } catch (error) {
-                console.error('Error starting camera:', error);
-                alert('Unable to start the camera.');
+                console.error('启动摄像头失败：', error);
+                alert('无法启动摄像头。');
             }
         });
 
@@ -804,7 +841,7 @@
             try {
                 await fetch('/stop_camera');
             } catch (error) {
-                console.error('Error stopping camera:', error);
+                console.error('停止摄像头失败：', error);
             }
 
             isStreamingActive = false;
@@ -832,11 +869,11 @@
                     return;
                 }
                 await refreshEmotionPanel();
-                const warning = data.warning ? '\n\nWarning: ' + data.warning : '';
-                alert('Snapshot saved.\n\nImage: ' + data.image_file + '\nData: ' + data.data_file + warning);
+                const warning = data.warning ? '\n\n警告：' + data.warning : '';
+                alert('快照已保存。\n\n图片：' + data.image_file + '\n数据：' + data.data_file + warning);
             } catch (error) {
-                console.error('Error capturing frame:', error);
-                alert('Unable to capture the current frame.');
+                console.error('抓取快照失败：', error);
+                alert('无法抓取当前画面。');
             }
         });
 
@@ -848,53 +885,53 @@
                 renderEmotionTimeline(data.emotion_history || []);
                 renderEmotionFaces(data.faces || [], data);
             } catch (error) {
-                console.error('Error refreshing emotion panel:', error);
+                console.error('刷新情绪面板失败：', error);
             }
         }
 
         function updatePrimaryEmotion(primary, diagnostics = {}) {
             if (diagnostics.face_pipeline_ready === false && diagnostics.face_pipeline_last_error) {
-                primaryEmotion.textContent = 'Unavailable';
-                primaryConfidence.textContent = 'Confidence: --';
+                primaryEmotion.textContent = '不可用';
+                primaryConfidence.textContent = '置信度：--';
                 primaryMeta.textContent = diagnostics.face_pipeline_last_error;
                 return;
             }
 
             if (!primary) {
-                primaryEmotion.textContent = 'Neutral';
-                primaryConfidence.textContent = 'Confidence: 0.0%';
-                primaryMeta.textContent = 'No face detected yet.';
+                primaryEmotion.textContent = '平静';
+                primaryConfidence.textContent = '置信度：0.0%';
+                primaryMeta.textContent = '暂未检测到人脸。';
                 return;
             }
 
             const confidence = ((primary.confidence || 0) * 100).toFixed(1);
-            primaryEmotion.textContent = primary.label || 'Neutral';
-            primaryConfidence.textContent = `Confidence: ${confidence}%`;
+            primaryEmotion.textContent = translateEmotionLabel(primary.label || 'Neutral');
+            primaryConfidence.textContent = `置信度：${confidence}%`;
 
             if (primary.faces_count > 0) {
-                const timeLabel = primary.timestamp ? new Date(primary.timestamp).toLocaleTimeString() : 'unknown time';
-                primaryMeta.textContent = `${primary.faces_count} face(s) detected. Last updated at ${timeLabel}.`;
+                const timeLabel = primary.timestamp ? new Date(primary.timestamp).toLocaleTimeString() : '未知时间';
+                primaryMeta.textContent = `检测到 ${primary.faces_count} 张人脸，最近更新时间：${timeLabel}。`;
             } else {
                 primaryMeta.textContent = isStreamingActive
-                    ? 'Camera is active, but no face is currently detected.'
-                    : 'No face detected yet.';
+                    ? '摄像头已启动，但当前未检测到人脸。'
+                    : '暂未检测到人脸。';
             }
         }
 
         function renderEmotionTimeline(history) {
             if (!history.length) {
-                emotionTimeline.innerHTML = '<div class="empty-state">Meaningful emotion changes will appear here.</div>';
+                emotionTimeline.innerHTML = '<div class="empty-state">关键情绪变化将显示在这里。</div>';
                 return;
             }
 
             emotionTimeline.innerHTML = history.slice(-10).reverse().map(item => {
                 const confidence = ((item.confidence || 0) * 100).toFixed(1);
-                const timeLabel = item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : 'unknown';
+                const timeLabel = item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : '未知';
                 return `
                     <div class="timeline-item">
                         <div>
-                            <strong>${escapeHtml(item.label || 'Neutral')}</strong>
-                            <div>${confidence}% confidence</div>
+                            <strong>${escapeHtml(translateEmotionLabel(item.label || 'Neutral'))}</strong>
+                            <div>置信度 ${confidence}%</div>
                         </div>
                         <span>${escapeHtml(timeLabel)}</span>
                     </div>
@@ -909,14 +946,14 @@
             }
 
             if (!faces.length) {
-                emotionContent.innerHTML = '<div class="empty-state">No analyzed face data available yet.</div>';
+                emotionContent.innerHTML = '<div class="empty-state">暂无人脸分析数据。</div>';
                 return;
             }
 
             emotionContent.innerHTML = faces.map((face, index) => {
                 const rows = Object.entries(face.all_emotions || {}).map(([label, value]) => `
                     <div class="bar-row">
-                        <span>${escapeHtml(label)}</span>
+                        <span>${escapeHtml(translateEmotionLabel(label))}</span>
                         <div class="bar-track"><div class="bar-fill" style="width:${Math.max(0, Math.min(100, value * 100))}%"></div></div>
                         <span>${(value * 100).toFixed(1)}%</span>
                     </div>
@@ -926,12 +963,12 @@
                     <div class="emotion-card">
                         <div class="emotion-card-head">
                             <div>
-                                <div>Face ${index + 1}</div>
-                                <div class="emotion-label">${escapeHtml(face.predicted_emotion || 'Unknown')}</div>
+                                <div>人脸 ${index + 1}</div>
+                                <div class="emotion-label">${escapeHtml(translateEmotionLabel(face.predicted_emotion || 'Unknown'))}</div>
                             </div>
                             <div>${((face.confidence || 0) * 100).toFixed(1)}%</div>
                         </div>
-                        <div class="emotion-metric">Eye aspect ratio: ${(face.ear || 0).toFixed(3)}</div>
+                        <div class="emotion-metric">眼睛纵横比：${(face.ear || 0).toFixed(3)}</div>
                         <div class="bar-group">${rows}</div>
                     </div>
                 `;
@@ -944,18 +981,19 @@
                 const data = await response.json();
                 chatMessages.innerHTML = '';
                 knownMessageKeys.clear();
+                lastTimeDividerTime = null;
 
                 const messages = data.messages || [];
                 if (!messages.length) {
-                    addBotMessage('Hello. I will use your current facial emotion context when it is available.');
+                    addBotMessage('你好。我会在可用时结合你当前的人脸情绪上下文来进行对话。');
                     return;
                 }
 
                 messages.forEach(message => appendMessage(message));
                 scrollChatToBottom();
             } catch (error) {
-                console.error('Error loading conversation history:', error);
-                addSystemMessage('Conversation history could not be loaded.');
+                console.error('加载对话历史失败：', error);
+                addSystemMessage('无法加载对话历史。');
             }
         }
 
@@ -982,17 +1020,17 @@
                 chatSend.disabled = false;
 
                 if (!response.ok) {
-                    addBotMessage(data.answer || 'The chat service is temporarily unavailable.');
+                    addBotMessage(data.answer || '对话服务暂时不可用。');
                     return;
                 }
 
                 if (data.message) {
                     appendMessage(data.message);
                 } else {
-                    addBotMessage(data.answer || 'The chat service is temporarily unavailable.');
+                    addBotMessage(data.answer || '对话服务暂时不可用。');
                 }
             } catch (error) {
-                console.error('Error sending message:', error);
+                console.error('发送消息失败：', error);
                 setTyping(false);
                 chatSend.disabled = false;
                 addBotMessage('对话服务暂时不可用，请稍后再试。');
@@ -1004,11 +1042,11 @@
                 await fetch('/reset_conversation', { method: 'POST' });
                 chatMessages.innerHTML = '';
                 knownMessageKeys.clear();
-                addSystemMessage('Conversation history was cleared.');
-                addBotMessage('We can start fresh whenever you are ready.');
+                addSystemMessage('对话历史已清空。');
+                addBotMessage('你准备好后，我们可以重新开始。');
             } catch (error) {
-                console.error('Error resetting conversation:', error);
-                addSystemMessage('Could not reset the conversation right now.');
+                console.error('重置对话失败：', error);
+                addSystemMessage('暂时无法重置对话。');
             }
         });
 
@@ -1019,7 +1057,7 @@
                 const messages = data.messages || [];
                 messages.forEach(message => appendMessage(message));
             } catch (error) {
-                console.error('Error polling chat updates:', error);
+                console.error('轮询聊天更新失败：', error);
             }
         }
 
@@ -1031,34 +1069,101 @@
             knownMessageKeys.add(key);
 
             if (message.role === 'assistant') {
-                addBotMessage(message.content);
+                addBotMessage(message.content, message.timestamp);
                 return;
             }
             if (message.role === 'user') {
-                addUserMessage(message.content);
+                addUserMessage(message.content, message.timestamp);
                 return;
             }
-            addSystemMessage(message.content || 'System update.');
+            addSystemMessage(message.content || '系统状态更新。', message.timestamp);
         }
 
-        function addUserMessage(text) {
-            addChatBubble('user', text);
+        function addUserMessage(text, timestamp) {
+            addChatBubble('user', text, timestamp);
         }
 
-        function addBotMessage(text) {
-            addChatBubble('bot', text);
+        function addBotMessage(text, timestamp) {
+            addChatBubble('bot', text, timestamp);
         }
 
-        function addSystemMessage(text) {
-            addChatBubble('system', text);
+        function addSystemMessage(text, timestamp) {
+            addChatBubble('system', text, timestamp);
         }
 
-        function addChatBubble(type, text) {
+        function addChatBubble(type, text, timestamp) {
+            const eventTime = normalizeTimestamp(timestamp);
+            maybeInsertTimeDivider(eventTime);
+
             const element = document.createElement('div');
             element.className = `message ${type}`;
-            element.textContent = text;
+
+            const contentElement = document.createElement('div');
+            contentElement.textContent = text;
+            element.appendChild(contentElement);
+
+            const timeElement = document.createElement('div');
+            timeElement.className = 'message-time';
+            timeElement.textContent = formatMessageTime(eventTime);
+            element.appendChild(timeElement);
+
             chatMessages.appendChild(element);
             scrollChatToBottom();
+        }
+
+        function maybeInsertTimeDivider(dateObj) {
+            const FIVE_MINUTES = 5 * 60 * 1000;
+            if (lastTimeDividerTime !== null && dateObj - lastTimeDividerTime < FIVE_MINUTES) {
+                return;
+            }
+
+            lastTimeDividerTime = dateObj;
+            const divider = document.createElement('div');
+            divider.className = 'chat-time-divider';
+            divider.textContent = formatDividerTime(dateObj);
+            chatMessages.appendChild(divider);
+        }
+
+        function normalizeTimestamp(rawTimestamp) {
+            if (typeof rawTimestamp === 'string' && rawTimestamp.startsWith('local-')) {
+                const millis = Number(rawTimestamp.slice(6));
+                if (Number.isFinite(millis)) {
+                    return new Date(millis);
+                }
+            }
+
+            if (rawTimestamp) {
+                const parsed = new Date(rawTimestamp);
+                if (!Number.isNaN(parsed.getTime())) {
+                    return parsed;
+                }
+            }
+
+            return new Date();
+        }
+
+        function formatDividerTime(dateObj) {
+            const now = new Date();
+            const isSameDay =
+                dateObj.getFullYear() === now.getFullYear() &&
+                dateObj.getMonth() === now.getMonth() &&
+                dateObj.getDate() === now.getDate();
+
+            const baseTime = formatMessageTime(dateObj);
+            if (isSameDay) {
+                return `今天 ${baseTime}`;
+            }
+
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day} ${baseTime}`;
+        }
+
+        function formatMessageTime(dateObj) {
+            const hour = String(dateObj.getHours()).padStart(2, '0');
+            const minute = String(dateObj.getMinutes()).padStart(2, '0');
+            return `${hour}:${minute}`;
         }
 
         function setTyping(active) {
@@ -1082,6 +1187,15 @@
 
         function scrollChatToBottom() {
             chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function translateEmotionLabel(label) {
+            const source = String(label || '').trim();
+            if (!source) {
+                return '未知';
+            }
+            const mapped = emotionLabelMap[source.toLowerCase()];
+            return mapped || source;
         }
 
         function escapeHtml(value) {
